@@ -1,8 +1,16 @@
 (ns fictionary-clj.core
   (:require [seesaw.core :as s]
             [fictionary-clj.render :as r]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [clojure.java.classpath :as cp])
   (:gen-class))
+
+(defn- save-dictionary [dictionary]
+  (if-let [dir (first (filter #(re-matches #".*resources" (str %)) (cp/classpath-directories)))]
+    (do
+      (spit (str dir "/dictionary.clj") dictionary)
+      (s/alert "Save successful. :D"))
+    (s/alert "ERROR!  Looks like saving doesn't work :/")))
 
 (def alphabet (atom []))
 (def dictionary (atom {}))
@@ -25,7 +33,7 @@
                                              :id :dictionary
                                              :items [])
                                             (s/button :text "Save"
-                                                      :listen [:action (fn [_] (spit "resources/dictionary.clj" @dictionary))])]))}
+                                                      :listen [:action (fn [_] (save-dictionary @dictionary))])]))}
            {:title "New Words"
             :content (s/vertical-panel
                       :items [(s/vertical-panel
@@ -56,7 +64,7 @@
                         :items (map r/render-letter new-state))))
 
 (swap! alphabet (constantly (range 1 48)))
-(swap! dictionary (fn [_] (try (read-string (slurp (io/resource"dictionary.clj"))) (catch Exception e {}))))
+(swap! dictionary (fn [_] (let [loaded (try (read-string (slurp (io/resource "dictionary.clj"))) (catch Exception e {}))] (if (map? loaded) loaded {}  ))))
 (swap! random-words (constantly (r/generate-random-words (count @alphabet) 10 15)))
 
 (defn -main [& args]
